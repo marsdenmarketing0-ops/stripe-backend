@@ -1,19 +1,27 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 exports.handler = async (event) => {
   try {
-    const sessionId = (event.queryStringParameters || {}).session_id;
-    if (!sessionId) return { statusCode: 400, body: 'Missing session_id' };
+    const { session_id } = event.queryStringParameters;
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    const paid = session.payment_status === 'paid';
+    if (!session_id) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Missing session_id" }),
+      };
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(session_id);
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paid })
+      body: JSON.stringify({ paid: session.payment_status === "paid" }),
     };
   } catch (err) {
-    return { statusCode: 500, body: `Error: ${err.message}` };
+    console.error("Error verifying session:", err);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message }),
+    };
   }
 };
